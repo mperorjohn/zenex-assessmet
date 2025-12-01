@@ -2,15 +2,14 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 
 class User extends Authenticatable implements JWTSubject
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
     /**
@@ -19,9 +18,29 @@ class User extends Authenticatable implements JWTSubject
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'uuid',
+        'first_name',
+        'last_name',
+        'date_of_birth',
         'email',
+        'email_verified_at',
+        'phone_number',
+        'phone_verified_at',
+        'bvn_hash',
+        'nin_hash',
+        'verification_type_id',
+        'verification_number',
+        'country_id',
+        'state_id',
+        'city_id',
+        'address',
+        'address_verification_document',
+        'address_verified_at',
+        'face_biometric',
+        'primary_device_id',
         'password',
+        'transaction_pin',
+        'is_active',
     ];
 
     /**
@@ -32,6 +51,9 @@ class User extends Authenticatable implements JWTSubject
     protected $hidden = [
         'password',
         'remember_token',
+        'transaction_pin',
+        'bvn_hash',
+        'nin_hash',
     ];
 
     /**
@@ -43,8 +65,60 @@ class User extends Authenticatable implements JWTSubject
     {
         return [
             'email_verified_at' => 'datetime',
+            'phone_verified_at' => 'datetime',
+            'address_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
+            'date_of_birth' => 'date',
         ];
+    }
+
+    /**
+     * Set the transaction PIN attribute.
+     */
+    public function setTransactionPinAttribute($value)
+    {
+        if ($value) {
+            $this->attributes['transaction_pin'] = \Hash::make($value);
+        }
+    }
+
+    /**
+     * Verify transaction PIN.
+     */
+    public function verifyTransactionPin($pin)
+    {
+        return \Hash::check($pin, $this->transaction_pin);
+    }
+
+    /**
+     * Boot method to auto-generate UUID.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            if (empty($model->uuid)) {
+                $model->uuid = (string) Str::uuid();
+            }
+        });
+    }
+
+    /**
+     * Override the newUniqueId method to auto-generate UUID
+     */
+    public function newUniqueId()
+    {
+        return (string) Str::uuid();
+    }
+
+    /**
+     * Get the columns that should receive a unique identifier
+     */
+    public function uniqueIds()
+    {
+        return ['uuid'];
     }
 
     /**
@@ -65,5 +139,29 @@ class User extends Authenticatable implements JWTSubject
     public function getJWTCustomClaims()
     {
         return [];
+    }
+
+    /**
+     * Relationship: User has one primary wallet.
+     */
+    public function wallet()
+    {
+        return $this->hasOne(Wallet::class)->where('wallet_type', 'primary');
+    }
+
+    /**
+     * Relationship: User has many wallets.
+     */
+    public function wallets()
+    {
+        return $this->hasMany(Wallet::class);
+    }
+
+    /**
+     * Relationship: User has many audit logs.
+     */
+    public function auditLogs()
+    {
+        return $this->hasMany(AuditLog::class);
     }
 }
