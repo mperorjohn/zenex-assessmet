@@ -16,9 +16,9 @@ return new class extends Migration
             $table->foreignId('transaction_id')->constrained('wallet_transactions')->onDelete('cascade');
             $table->foreignId('wallet_id')->constrained('wallets')->onDelete('cascade');
             $table->enum('entry_type', ['debit', 'credit']);
-            $table->decimal('amount', 15, 2);
-            $table->decimal('balance_before', 15, 2);
-            $table->decimal('balance_after', 15, 2);
+            $table->unsignedBigInteger('amount');
+            $table->unsignedBigInteger('balance_before');
+            $table->unsignedBigInteger('balance_after');
             $table->string('description')->nullable();
             $table->timestamps();
 

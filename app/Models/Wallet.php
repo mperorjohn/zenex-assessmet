@@ -41,7 +41,7 @@ class Wallet extends Model
      * @var array
      */
     protected $casts = [
-        'balance' => 'decimal:2',
+        'balance' => 'integer',
         'is_active' => 'boolean',
         'is_locked' => 'boolean',
         'locked_at' => 'datetime',

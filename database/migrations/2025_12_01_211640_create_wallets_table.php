@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('wallets', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->decimal('balance', 15, 2)->default(0);
+            $table->unsignedBigInteger('balance')->default(0);
             $table->string('currency')->default('USD');
             $table->enum('wallet_type', ['primary', 'savings'])->default('primary');
             $table->string('pin')->nullable();

@@ -14,9 +14,9 @@ return new class extends Migration
         Schema::create('transaction_limits', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->decimal('daily_limit', 15, 2)->default(1000000.00);
-            $table->decimal('daily_spent', 15, 2)->default(0.00);
-            $table->decimal('single_transaction_limit', 15, 2)->default(100000.00);
+            $table->unsignedBigInteger('daily_limit')->default(100000000);
+            $table->unsignedBigInteger('daily_spent')->default(0);
+            $table->unsignedBigInteger('single_transaction_limit')->default(10000000);
             $table->integer('daily_transaction_count')->default(0);
             $table->integer('max_daily_transactions')->default(50);
             $table->date('limit_date');

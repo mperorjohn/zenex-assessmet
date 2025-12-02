@@ -115,7 +115,7 @@ class UserSeeder extends Seeder
                     'wallet_type' => 'primary',
                 ],
                 [
-                    'balance' => rand(10000, 100000), // Random balance between 10k-100k
+                    'balance' => rand(1000000, 10000000), // Random balance between 10k-100k kobo (100-1000 USD)
                     'currency' => 'USD',
                     'is_active' => true,
                 ]
@@ -124,7 +124,8 @@ class UserSeeder extends Seeder
             // Set wallet PIN (will be auto-hashed)
             $wallet->setPin('1234');
 
-            $this->command->info("  ✓ Created primary wallet with balance: {$wallet->balance} {$wallet->currency}");
+            $displayBalance = number_format($wallet->balance / 100, 2);
+            $this->command->info("  ✓ Created primary wallet with balance: \${$displayBalance} {$wallet->currency} ({$wallet->balance} kobo)");
 
             // Create savings wallet
             $savingsWallet = Wallet::updateOrCreate(
@@ -133,7 +134,7 @@ class UserSeeder extends Seeder
                     'wallet_type' => 'savings',
                 ],
                 [
-                    'balance' => rand(5000, 50000),
+                    'balance' => rand(500000, 5000000), // Random balance between 5k-50k kobo (50-500 USD)
                     'currency' => 'USD',
                     'is_active' => true,
                 ]
@@ -141,7 +142,8 @@ class UserSeeder extends Seeder
 
             $savingsWallet->setPin('1234');
 
-            $this->command->info("  ✓ Created savings wallet with balance: {$savingsWallet->balance} {$savingsWallet->currency}");
+            $displaySavingsBalance = number_format($savingsWallet->balance / 100, 2);
+            $this->command->info("  ✓ Created savings wallet with balance: \${$displaySavingsBalance} {$savingsWallet->currency} ({$savingsWallet->balance} kobo)");
 
             // Create transaction limits
             TransactionLimit::updateOrCreate(
@@ -150,9 +152,9 @@ class UserSeeder extends Seeder
                     'limit_date' => today(),
                 ],
                 [
-                    'daily_limit' => 1000000.00,
-                    'daily_spent' => 0.00,
-                    'single_transaction_limit' => 100000.00,
+                    'daily_limit' => 100000000, // 1,000,000 USD = 100,000,000 kobo
+                    'daily_spent' => 0,
+                    'single_transaction_limit' => 10000000, // 100,000 USD = 10,000,000 kobo
                     'daily_transaction_count' => 0,
                     'max_daily_transactions' => 50,
                 ]

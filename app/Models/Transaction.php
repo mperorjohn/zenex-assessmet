@@ -31,7 +31,7 @@ class Transaction extends Model
      * @var array
      */
     protected $casts = [
-        'amount' => 'decimal:2',
+        'amount' => 'integer',
     ];
 
     /**

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('sender_wallet_id')->nullable()->constrained('wallets')->onDelete('cascade');
             $table->foreignId('receiver_wallet_id')->nullable()->constrained('wallets')->onDelete('cascade');
             $table->enum('transaction_type', ['wallet_to_wallet', 'fund_wallet', 'purchase', 'top_up', 'withdrawal']);
-            $table->decimal('amount', 15, 2);
+            $table->unsignedBigInteger('amount');
             $table->string('currency')->default('USD');
             $table->string('reference')->unique();
             $table->enum('status', ['pending', 'successful', 'failed'])->default('pending');

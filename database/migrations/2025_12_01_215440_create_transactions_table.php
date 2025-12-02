@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('wallet_id')->constrained('wallets')->onDelete('cascade');
             $table->enum('transaction_type', ['credit', 'debit']);
-            $table->decimal('amount', 15, 2);
+            $table->unsignedBigInteger('amount');
             $table->string('currency')->default('USD');
             $table->string('reference')->unique();
             $table->enum('status', ['pending', 'successful', 'failed'])->default('pending');
