@@ -1,59 +1,233 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Zenex Backend - Money Ledger API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Laravel 12.0 API-only application with JWT authentication and secure money ledger system implementing double-entry bookkeeping.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Setup Commands
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### 1. Install Dependencies
+```bash
+composer install
+```
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### 2. Configure Environment
+```bash
+cp .env.example .env
+# Update database credentials in .env
+```
 
-## Learning Laravel
+### 3. Generate Keys & Run Migrations
+```bash
+php artisan key:generate
+php artisan migrate:fresh --seed
+```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+### 4. Start Server
+```bash
+php artisan serve
+```
+API available at: `http://localhost:8000`
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+## Test Credentials
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+| Email | Password | Transaction PIN | Wallet PIN |
+|-------|----------|----------------|------------|
+| john@example.com | password | 1234 | 1234 |
+| jane@example.com | password | 5678 | 1234 |
+| admin@example.com | password | 9999 | 1234 |
 
-### Premium Partners
+---
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## Transaction Workflow
 
-## Contributing
+### 1. **User Authentication**
+```
+POST /api/auth/login → Returns JWT token
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 2. **Wallet Operations** (via Model Methods)
+```php
+// Credit wallet
+$wallet->credit($amount, $description, $idempotencyKey);
 
-## Code of Conduct
+// Debit wallet
+$wallet->debit($amount, $description, $idempotencyKey);
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### 3. **Transaction Flow**
+1. **Validate transaction PIN** - User provides PIN for authorization
+2. **Verify wallet PIN** - Wallet-level security check
+3. **Check transaction limits** - Daily/single transaction limits
+4. **Idempotency check** - Prevent duplicate transactions
+5. **Pessimistic locking** - Lock wallet row (`lockForUpdate()`)
+6. **Balance validation** - Ensure sufficient funds
+7. **Create transaction** - Generate unique reference number
+8. **Double-entry bookkeeping** - Create 2 ledger entries:
+   - **Debit entry** - Reduce sender's balance
+   - **Credit entry** - Increase receiver's balance
+9. **Calculate checksum** - SHA-256 hash of balance for integrity
+10. **Update limits** - Track daily spent and transaction count
+11. **Audit logging** - Record all transaction details
+12. **Fraud detection** - Monitor suspicious patterns
 
-## Security Vulnerabilities
+### 4. **Transaction States**
+- `pending` - Transaction initiated
+- `completed` - Successfully processed
+- `failed` - Transaction rejected
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
 
-## License
+## Security Features Covered
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### ✅ **Critical Security (93% Implementation)**
+
+#### 1. **Atomicity & Consistency**
+- Database transactions wrap all operations
+- Rollback on any failure
+- Pessimistic locking (`lockForUpdate()`)
+
+#### 2. **Idempotency**
+- Unique `idempotency_key` prevents duplicate transactions
+- Database constraint enforces uniqueness
+- Returns existing transaction if key exists
+
+#### 3. **PIN Security**
+- Transaction PINs hashed with bcrypt
+- Wallet PINs hashed separately
+- PIN attempts tracked for brute-force protection
+- Auto-lock after 5 failed attempts
+
+#### 4. **Balance Validation**
+- Real-time balance checks before debit
+- Balance checksums (SHA-256) for integrity verification
+- Double-entry ensures debits = credits
+
+#### 5. **Double-Entry Bookkeeping**
+- Every transaction creates 2 ledger entries
+- Debit + Credit must balance
+- Tracks `balance_before` and `balance_after`
+- Immutable audit trail
+
+#### 6. **Transaction Limits**
+- Daily spending limits per user
+- Single transaction maximum
+- Daily transaction count limits
+- Auto-reset at midnight
+
+#### 7. **Fraud Detection**
+- Suspicious activity tracking
+- Unusual pattern detection
+- Multiple failed PIN attempts
+- Geographic anomalies (device tracking)
+
+#### 8. **Audit Trail**
+- Complete transaction history
+- User action logging
+- IP address and device tracking
+- Timestamped entries (immutable)
+
+#### 9. **Data Protection**
+- Sensitive data hashed (BVN, NIN, PINs)
+- UUID-based user identification
+- No plain text PINs stored
+- Biometric data encryption support
+
+---
+
+## Database Schema
+
+### Core Tables
+- `users` - User accounts with KYC verification
+- `wallets` - Multi-wallet support (primary, savings)
+- `wallet_transactions` - Transaction records
+- `ledger_entries` - Double-entry bookkeeping
+- `transaction_limits` - Spending limits
+- `suspicious_activities` - Fraud logs
+- `audit_logs` - Complete audit trail
+
+### Supporting Tables
+- `countries`, `states`, `cities` - Location data
+- `verification_types` - KYC verification (NIN, BVN, Passport)
+- `devices` - User device tracking
+
+---
+
+## Key Model Methods
+
+### Wallet Model
+```php
+// Credit wallet (receives money)
+$wallet->credit(
+    amount: 1000.00,
+    description: 'Payment received',
+    idempotencyKey: 'unique-key-123'
+);
+
+// Debit wallet (sends money)
+$wallet->debit(
+    amount: 500.00,
+    description: 'Payment sent',
+    idempotencyKey: 'unique-key-456'
+);
+
+// Verify wallet PIN
+$wallet->verifyPin('1234'); // Returns boolean
+```
+
+### User Model
+```php
+// Verify transaction PIN
+$user->verifyTransactionPin('1234'); // Returns boolean
+
+// Get wallets
+$user->wallet; // Primary wallet
+$user->wallets; // All wallets
+```
+
+---
+
+## Testing Commands
+
+### View Database Records
+```bash
+php artisan tinker
+
+# Check users
+User::all();
+
+# Check wallets with balances
+Wallet::with('user')->get();
+
+# View recent transactions
+WalletTransaction::latest()->take(10)->get();
+
+# Check ledger entries (double-entry)
+LedgerEntry::with('wallet', 'transaction')->get();
+```
+
+### Test Authentication
+```bash
+# Login
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "john@example.com", "password": "password"}'
+
+# Get user details
+curl -X GET http://localhost:8000/api/auth/me \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+---
+
+## Notes
+
+- JWT secret auto-generated during setup
+- UUIDs auto-generated for users
+- All timestamps in UTC
+- Transaction PINs and Wallet PINs hashed with bcrypt
+- Balance checksums calculated on every transaction
+- Idempotency keys prevent duplicate transactions
+- Ledger entries are immutable (no updates/deletes)

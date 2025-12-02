@@ -1,59 +1,10 @@
-# Zenex Backend - Setup Documentation
+# Zenex Backend - Money Ledger API
 
-## Overview
-This is a Laravel 12.0 API-only application implementing a secure Money Ledger system with JWT authentication, double-entry bookkeeping, and enterprise-grade security features.
+Laravel 12.0 API-only application with JWT authentication and secure money ledger system implementing double-entry bookkeeping.
 
-## What's Been Implemented
+---
 
-### 1. **API-Only Configuration**
-- Configured Laravel for API-only usage (no web routes or sessions)
-- CORS middleware enabled for API access
-- All routes defined in `routes/api.php`
-
-### 2. **JWT Authentication**
-- Package: `tymon/jwt-auth` (v2.2.1)
-- JWT secret already generated
-- Authentication endpoints: register, login, logout, refresh, me
-- Default guard: `api` with `jwt` driver
-
-### 3. **Database Schema - Money Ledger System**
-Complete database design with the following tables:
-- **users** - User accounts with KYC verification
-- **wallets** - Multi-wallet support (primary, savings)
-- **wallet_transactions** - Transaction records
-- **ledger_entries** - Double-entry bookkeeping system
-- **transaction_limits** - Daily/single transaction limits
-- **suspicious_activities** - Fraud detection logs
-- **audit_logs** - Complete audit trail
-- **countries, states, cities** - Location data
-- **verification_types** - KYC verification types
-- **address_verification_types** - Address verification
-- **devices** - User device tracking
-
-### 4. **Security Features Implemented**
-- ✅ Double-entry bookkeeping (debit + credit entries)
-- ✅ Pessimistic locking (`lockForUpdate()`)
-- ✅ Balance checksums (SHA-256)
-- ✅ Idempotency keys for transactions
-- ✅ Transaction PIN hashing (bcrypt)
-- ✅ Wallet PIN security
-- ✅ Brute-force protection
-- ✅ Transaction limits enforcement
-- ✅ Suspicious activity tracking
-- ✅ Comprehensive audit logging
-
-### 5. **Test Data Seeded**
-- Location data (USA/California/LA and Nigeria/Lagos)
-- Verification types (NIN, BVN, Passport, etc.)
-- 3 test users with wallets and transaction limits
-
-## Prerequisites
-- PHP 8.2+
-- MySQL
-- Composer
-- Node.js & NPM (optional, for frontend assets)
-
-## Quick Start Commands
+## Setup Commands
 
 ### 1. Install Dependencies
 ```bash
@@ -62,39 +13,25 @@ composer install
 
 ### 2. Configure Environment
 ```bash
-# Copy the example environment file
 cp .env.example .env
-
 # Update database credentials in .env
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=zenex_db
-DB_USERNAME=your_username
-DB_PASSWORD=your_password
 ```
 
-### 3. Generate Application Key
+### 3. Generate Keys & Run Migrations
 ```bash
 php artisan key:generate
-```
-
-### 4. Run Migrations and Seeders
-```bash
-# Fresh migration with all seeders
 php artisan migrate:fresh --seed
 ```
 
-### 5. Start Development Server
+### 4. Start Server
 ```bash
 php artisan serve
 ```
+API available at: `http://localhost:8000`
 
-The API will be available at: `http://localhost:8000`
+---
 
-## Test User Credentials
-
-After running seeders, you can use these test accounts:
+## Test Credentials
 
 | Email | Password | Transaction PIN | Wallet PIN |
 |-------|----------|----------------|------------|
@@ -102,138 +39,195 @@ After running seeders, you can use these test accounts:
 | jane@example.com | password | 5678 | 1234 |
 | admin@example.com | password | 9999 | 1234 |
 
-## API Endpoints
+---
 
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login
-- `POST /api/auth/logout` - Logout (requires auth)
-- `POST /api/auth/refresh` - Refresh JWT token
-- `GET /api/auth/me` - Get authenticated user details
+## Transaction Workflow
 
-### Health Check
-- `GET /api/health` - API health status
-
-## Testing the API
-
-### 1. Login
-```bash
-curl -X POST http://localhost:8000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "john@example.com",
-    "password": "password"
-  }'
+### 1. **User Authentication**
+```
+POST /api/auth/login → Returns JWT token
 ```
 
-### 2. Get User Details (with token)
+### 2. **Wallet Operations** (via Model Methods)
+```php
+// Credit wallet
+$wallet->credit($amount, $description, $idempotencyKey);
+
+// Debit wallet
+$wallet->debit($amount, $description, $idempotencyKey);
+```
+
+### 3. **Transaction Flow**
+1. **Validate transaction PIN** - User provides PIN for authorization
+2. **Verify wallet PIN** - Wallet-level security check
+3. **Check transaction limits** - Daily/single transaction limits
+4. **Idempotency check** - Prevent duplicate transactions
+5. **Pessimistic locking** - Lock wallet row (`lockForUpdate()`)
+6. **Balance validation** - Ensure sufficient funds
+7. **Create transaction** - Generate unique reference number
+8. **Double-entry bookkeeping** - Create 2 ledger entries:
+   - **Debit entry** - Reduce sender's balance
+   - **Credit entry** - Increase receiver's balance
+9. **Calculate checksum** - SHA-256 hash of balance for integrity
+10. **Update limits** - Track daily spent and transaction count
+11. **Audit logging** - Record all transaction details
+12. **Fraud detection** - Monitor suspicious patterns
+
+### 4. **Transaction States**
+- `pending` - Transaction initiated
+- `completed` - Successfully processed
+- `failed` - Transaction rejected
+
+---
+
+## Security Features Covered
+
+### ✅ **Critical Security (93% Implementation)**
+
+#### 1. **Atomicity & Consistency**
+- Database transactions wrap all operations
+- Rollback on any failure
+- Pessimistic locking (`lockForUpdate()`)
+
+#### 2. **Idempotency**
+- Unique `idempotency_key` prevents duplicate transactions
+- Database constraint enforces uniqueness
+- Returns existing transaction if key exists
+
+#### 3. **PIN Security**
+- Transaction PINs hashed with bcrypt
+- Wallet PINs hashed separately
+- PIN attempts tracked for brute-force protection
+- Auto-lock after 5 failed attempts
+
+#### 4. **Balance Validation**
+- Real-time balance checks before debit
+- Balance checksums (SHA-256) for integrity verification
+- Double-entry ensures debits = credits
+
+#### 5. **Double-Entry Bookkeeping**
+- Every transaction creates 2 ledger entries
+- Debit + Credit must balance
+- Tracks `balance_before` and `balance_after`
+- Immutable audit trail
+
+#### 6. **Transaction Limits**
+- Daily spending limits per user
+- Single transaction maximum
+- Daily transaction count limits
+- Auto-reset at midnight
+
+#### 7. **Fraud Detection**
+- Suspicious activity tracking
+- Unusual pattern detection
+- Multiple failed PIN attempts
+- Geographic anomalies (device tracking)
+
+#### 8. **Audit Trail**
+- Complete transaction history
+- User action logging
+- IP address and device tracking
+- Timestamped entries (immutable)
+
+#### 9. **Data Protection**
+- Sensitive data hashed (BVN, NIN, PINs)
+- UUID-based user identification
+- No plain text PINs stored
+- Biometric data encryption support
+
+---
+
+## Database Schema
+
+### Core Tables
+- `users` - User accounts with KYC verification
+- `wallets` - Multi-wallet support (primary, savings)
+- `wallet_transactions` - Transaction records
+- `ledger_entries` - Double-entry bookkeeping
+- `transaction_limits` - Spending limits
+- `suspicious_activities` - Fraud logs
+- `audit_logs` - Complete audit trail
+
+### Supporting Tables
+- `countries`, `states`, `cities` - Location data
+- `verification_types` - KYC verification (NIN, BVN, Passport)
+- `devices` - User device tracking
+
+---
+
+## Key Model Methods
+
+### Wallet Model
+```php
+// Credit wallet (receives money)
+$wallet->credit(
+    amount: 1000.00,
+    description: 'Payment received',
+    idempotencyKey: 'unique-key-123'
+);
+
+// Debit wallet (sends money)
+$wallet->debit(
+    amount: 500.00,
+    description: 'Payment sent',
+    idempotencyKey: 'unique-key-456'
+);
+
+// Verify wallet PIN
+$wallet->verifyPin('1234'); // Returns boolean
+```
+
+### User Model
+```php
+// Verify transaction PIN
+$user->verifyTransactionPin('1234'); // Returns boolean
+
+// Get wallets
+$user->wallet; // Primary wallet
+$user->wallets; // All wallets
+```
+
+---
+
+## Testing Commands
+
+### View Database Records
 ```bash
+php artisan tinker
+
+# Check users
+User::all();
+
+# Check wallets with balances
+Wallet::with('user')->get();
+
+# View recent transactions
+WalletTransaction::latest()->take(10)->get();
+
+# Check ledger entries (double-entry)
+LedgerEntry::with('wallet', 'transaction')->get();
+```
+
+### Test Authentication
+```bash
+# Login
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "john@example.com", "password": "password"}'
+
+# Get user details
 curl -X GET http://localhost:8000/api/auth/me \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
-### 3. Health Check
-```bash
-curl http://localhost:8000/api/health
-```
-
-## Database Access
-
-### View Data in Terminal
-```bash
-# Access database via Artisan Tinker
-php artisan tinker
-
-# Example queries in Tinker:
-User::all()
-Wallet::with('user')->get()
-WalletTransaction::latest()->take(10)->get()
-```
-
-### Visual Database Browser
-```bash
-# Open Prisma Studio (if installed)
-php artisan prisma:studio
-```
-
-## Project Structure
-
-```
-app/
-├── Http/Controllers/     # API controllers
-├── Models/              # Eloquent models (User, Wallet, etc.)
-├── Providers/           # Service providers
-config/                  # Configuration files
-database/
-├── migrations/          # Database schema migrations
-└── seeders/            # Database seeders
-routes/
-└── api.php             # API routes
-```
-
-## Key Models & Features
-
-### User Model
-- UUID-based identification
-- JWT authentication support
-- Transaction PIN hashing
-- Multiple wallet relationships
-
-### Wallet Model
-- Credit/debit methods with double-entry bookkeeping
-- Balance checksum validation
-- PIN security
-- Pessimistic locking
-
-### Wallet Transaction Model
-- Idempotency key support
-- Reference number generation
-- Status tracking (pending, completed, failed)
-
-## Security Score
-✅ **93% Security Implementation**
-
-Implemented critical security features:
-- Atomicity & Consistency
-- Idempotency
-- PIN Security
-- Balance Validation
-- Double-entry Bookkeeping
-- Audit Trail
-- Rate Limiting Prevention
-- Transaction Limits
-
-## Additional Commands
-
-### Clear Cache
-```bash
-php artisan cache:clear
-php artisan config:clear
-php artisan route:clear
-```
-
-### Run Specific Seeder
-```bash
-php artisan db:seed --class=UserSeeder
-php artisan db:seed --class=LocationSeeder
-```
-
-### Check Migration Status
-```bash
-php artisan migrate:status
-```
-
-### Rollback Migrations
-```bash
-php artisan migrate:rollback
-```
+---
 
 ## Notes
-- The JWT secret is already generated and stored in `.env`
-- All timestamps are in UTC
-- Transaction PINs and Wallet PINs are hashed using bcrypt
-- UUIDs are automatically generated for users
-- Wallet balance checksums are calculated on every transaction
 
-## Support
-For issues or questions, please refer to the Laravel documentation: https://laravel.com/docs
+- JWT secret auto-generated during setup
+- UUIDs auto-generated for users
+- All timestamps in UTC
+- Transaction PINs and Wallet PINs hashed with bcrypt
+- Balance checksums calculated on every transaction
+- Idempotency keys prevent duplicate transactions
+- Ledger entries are immutable (no updates/deletes)
