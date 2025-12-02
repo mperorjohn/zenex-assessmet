@@ -149,20 +149,20 @@ All monetary values are stored as **unsigned big integers** representing the sma
 **Column Definitions:**
 ```php
 // wallets table
-$table->unsignedBigInteger('balance')->default(0)->comment('Balance in kobo/cents');
+$table->unsignedBigInteger('balance')->default(0);
 
 // wallet_transactions table
-$table->unsignedBigInteger('amount')->comment('Amount in kobo/cents');
+$table->unsignedBigInteger('amount');
 
 // ledger_entries table
-$table->unsignedBigInteger('amount')->comment('Amount in kobo/cents');
-$table->unsignedBigInteger('balance_before')->comment('Balance before in kobo/cents');
-$table->unsignedBigInteger('balance_after')->comment('Balance after in kobo/cents');
+$table->unsignedBigInteger('amount');
+$table->unsignedBigInteger('balance_before');
+$table->unsignedBigInteger('balance_after');
 
 // transaction_limits table
-$table->unsignedBigInteger('daily_limit')->default(100000000)->comment('Daily limit in kobo/cents');
-$table->unsignedBigInteger('daily_spent')->default(0)->comment('Daily spent in kobo/cents');
-$table->unsignedBigInteger('single_transaction_limit')->default(10000000)->comment('Single transaction limit');
+$table->unsignedBigInteger('daily_limit')->default(100000000);
+$table->unsignedBigInteger('daily_spent')->default(0);
+$table->unsignedBigInteger('single_transaction_limit')->default(10000000);
 ```
 
 ### Core Tables

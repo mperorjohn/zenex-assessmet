@@ -139,6 +139,32 @@ $wallet->debit($amount, $description, $idempotencyKey);
 
 ## Database Schema
 
+### Monetary Storage - Kobo/Cents Approach
+All monetary values are stored as **unsigned big integers** representing the smallest currency unit (kobo for Naira, cents for USD). This approach:
+- ✅ Eliminates floating-point precision errors
+- ✅ Ensures accurate financial calculations
+- ✅ Uses `unsignedBigInteger` (max: 18,446,744,073,709,551,615)
+- ✅ Example: $1000.00 = 100,000 kobo/cents
+
+**Column Definitions:**
+```php
+// wallets table
+$table->unsignedBigInteger('balance')->default(0);
+
+// wallet_transactions table
+$table->unsignedBigInteger('amount');
+
+// ledger_entries table
+$table->unsignedBigInteger('amount');
+$table->unsignedBigInteger('balance_before');
+$table->unsignedBigInteger('balance_after');
+
+// transaction_limits table
+$table->unsignedBigInteger('daily_limit')->default(100000000);
+$table->unsignedBigInteger('daily_spent')->default(0);
+$table->unsignedBigInteger('single_transaction_limit')->default(10000000);
+```
+
 ### Core Tables
 - `users` - User accounts with KYC verification
 - `wallets` - Multi-wallet support (primary, savings)
@@ -161,14 +187,14 @@ $wallet->debit($amount, $description, $idempotencyKey);
 ```php
 // Credit wallet (receives money)
 $wallet->credit(
-    amount: 1000.00,
+    amount: 100000, // 1000.00 USD in kobo (100,000 kobo = $1000)
     description: 'Payment received',
     idempotencyKey: 'unique-key-123'
 );
 
 // Debit wallet (sends money)
 $wallet->debit(
-    amount: 500.00,
+    amount: 50000, // 500.00 USD in kobo (50,000 kobo = $500)
     description: 'Payment sent',
     idempotencyKey: 'unique-key-456'
 );
@@ -224,6 +250,8 @@ curl -X GET http://localhost:8000/api/auth/me \
 
 ## Notes
 
+- **All amounts stored as kobo/cents** (e.g., $1000 = 100,000 kobo)
+- **Convert for display**: `$displayAmount = $koboAmount / 100`
 - JWT secret auto-generated during setup
 - UUIDs auto-generated for users
 - All timestamps in UTC
